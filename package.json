@@ -1,5 +1,5 @@
 {
-  "name": "eosio-api-provider-axios",
+  "name": "@greymass/eosio-api-provider-axios",
   "version": "0.0.1",
   "description": "API Provider utilizing axios for @greymass/eosio",
   "license": "MIT",
