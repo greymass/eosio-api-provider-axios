@@ -17,7 +17,7 @@ lib/index.es5.js: $(SRC_FILES) node_modules tsconfig.json rollup.config.js
 
 .PHONY: test
 test: node_modules
-	@mocha -u tdd -r ts-node/register --extension ts test/*.ts --grep '$(grep)'
+	@mocha -u tdd -r ts-node/register --extension ts test/*.ts --timeout 10000 --grep '$(grep)'
 
 .PHONY: coverage
 coverage: node_modules
