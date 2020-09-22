@@ -26,6 +26,24 @@ suite('api', function () {
         assert.equal(api.provider instanceof AxiosProvider, true)
     })
 
+    test('clean - single endpoint', async function () {
+        const provider = new AxiosProvider('https://jungle3.greymass.com/')
+        assert.equal(provider.url, 'https://jungle3.greymass.com')
+    })
+
+    test('clean - multiple endpoints', async function () {
+        const provider = new AxiosProvider([
+            'https://eos.greymass.com/',
+            'https://fio.greymass.com/',
+            'https://jungle3.greymass.com/',
+        ])
+        assert.equal(provider.url, 'https://eos.greymass.com')
+        assert.deepEqual(provider.getPool(), [
+            'https://fio.greymass.com',
+            'https://jungle3.greymass.com',
+        ])
+    })
+
     test('chain get_account', async function () {
         const api = new APIClient({
             provider: new AxiosProvider('https://jungle3.greymass.com')

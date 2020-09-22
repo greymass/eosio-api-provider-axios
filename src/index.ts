@@ -18,7 +18,7 @@ export class AxiosProvider implements APIProvider {
         if (Array.isArray(urls)) {
             this.urls = urls.map((url) => this.cleanUrl(url))
         } else {
-            this.urls = [urls]
+            this.urls = [this.cleanUrl(urls)]
         }
         const [url, ...pool] = this.urls
         // Pool of URLs including all but first
