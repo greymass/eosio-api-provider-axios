@@ -76,9 +76,12 @@ export class AxiosProvider implements APIProvider {
     }
 
     resetPool = () => {
+        // reset the url and pool with the defaults provided
         const [url, ...pool] = this.urls
         this.pool = pool
         this.url = url
+        // initialize again with default url
+        this.initialize()
     }
 
     cleanUrl = (url) => {
