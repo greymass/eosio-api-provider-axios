@@ -1,29 +1,18 @@
 import {APIProvider} from '@greymass/eosio'
 import axios, {AxiosInstance} from 'axios'
 
-export interface AxiosProviderOptions {
-    /**
-     * Axios Instance, allowing for override to include custom logic
-     */
-    axios?: AxiosInstance
-    /**
-     * Mode of operations for multiple API endpoints
-     *  available modes:
-     *      failover: will cycle through available endpoints when current node fails
-     */
-    mode?: string
-}
-
-type UrlType = string | string[]
+import {AxiosProviderOptions, UrlType} from './types'
+import AxiosProviderInterceptorFailover from './interceptors/failover'
 
 export class AxiosProvider implements APIProvider {
     readonly urls: string[]
 
-    private axios: AxiosInstance
-    private url: string
+    public axios: AxiosInstance
+    public url: string
+    public retries: number = 0
+
     private mode: string = 'failover'
     private pool: string[]
-    private retries: number = 0
 
     constructor(urls: UrlType, options: AxiosProviderOptions = {}) {
         if (Array.isArray(urls)) {
@@ -50,89 +39,30 @@ export class AxiosProvider implements APIProvider {
             .catch(this.handleError)
     }
 
-    getInstance() {
-        return axios.create({
-            baseURL: this.url,
-            timeout: 1000,
-        })
-    }
-
     initialize() {
         const instance = this.getInstance()
+        let interceptor
+        switch (this.mode) {
+            case "failover":
+            default: {
+                interceptor = new AxiosProviderInterceptorFailover(this)
+            }
+        }
         instance.interceptors.response.use(
-            response => response,
-            error => this.onError(error)
+            response => interceptor.onResponse(response),
+            error => interceptor.onError(error)
         )
-        return instance
+        return this.axios = instance
     }
 
-    onError = (error) => {
-        const request = error.config
-        try {
-            // If mode is failover and a connection pool exists, attempt retry
-            if (this.mode === 'failover' && this.pool.length) {
-                const retry = this.attemptRetry(request)
-                if (retry) {
-                    return retry
-                }
-            }
-            // if the pool is empty or exhausted, return the error response if it exists
-            if (error.response) {
-                return error.response
-            }
-            // otherwise return the error code
-            return {
-                data: {
-                    error: {
-                        what: error.code
-                    }
-                }
-            }
-        } catch (e) {
-            // if a failure occurs during failover, log it to console
-            console.log("error during failover", e)
-            // test if the response is json, and if not, return an artificial error
-            try {
-                const response = JSON.parse(JSON.stringify(error.response))
-            } catch (err) {
-                console.log("returning artificial error")
-                return {
-                    data: {
-                        error: {
-                            message: 'API server not returning JSON information.'
-                        }
-                    }
-                }
-            }
-            // and return the original error
-            return error.response
-        }
-    }
+    getInstance = () => axios.create({
+        baseURL: this.url,
+        timeout: 1000,
+    })
 
-    attemptRetry = (request) => {
-        // Rotate URLs in pool
-        this.rotatePool()
-        // Ensure the pool has available nodes before failing over
-        if (this.pool.length - this.retries >= 0) {
-            // Retry the request
-            return this.retryRequest(request)
-        }
-        // If the pool is exhaused, reset for the next request
-        this.resetPool()
-    }
+    getPool = () => this.pool
 
-    retryRequest = (originalRequest, milliseconds = 10) =>
-        new Promise((resolve, reject) =>
-            setTimeout(() => {
-                // Initialize axios with the new base URL
-                this.axios = this.initialize()
-                // Replace request configuration with new URL
-                originalRequest.baseURL = this.url
-                // Resolve the request to the new URL
-                resolve(this.axios(originalRequest))
-            }, milliseconds))
-
-    rotatePool() {
+    rotatePool = () => {
         // pull the next url and the remainder of the pool
         const [url, ...pool] = this.pool
         // push the current url onto the end of the pool
@@ -141,6 +71,8 @@ export class AxiosProvider implements APIProvider {
         this.url = url
         this.pool = pool
         this.retries = this.retries + 1
+        // initialize again with new url
+        this.initialize()
     }
 
     resetPool = () => {
@@ -149,13 +81,13 @@ export class AxiosProvider implements APIProvider {
         this.url = url
     }
 
-    cleanUrl(url) {
+    cleanUrl = (url) => {
         url = url.trim()
         if (url.endsWith('/')) url = url.slice(0, -1)
         return url
     }
 
-    handleError(e) {
+    handleError = (e) => {
         try {
             return e.response.data
         } catch(err) {

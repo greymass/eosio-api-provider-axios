@@ -6,38 +6,29 @@ import {APIClient, APIError} from '@greymass/eosio'
 
 import {AxiosProvider} from '../src'
 
-suite('api', function () {
+suite('interceptor - failover', function () {
     this.slow(200)
 
-    test('initialize', async function () {
-        const api = new APIClient({
-            provider: new AxiosProvider('https://jungle3.greymass.com')
-        })
-        assert.equal(api.provider instanceof AxiosProvider, true)
-    })
-
-    test('initialize multiple endpoints', async function () {
+    test('failover behaviour', async function () {
         const api = new APIClient({
             provider: new AxiosProvider([
+                'http://bogus1.greymass.com',
+                'https://bogus2.greymass.com',
                 'https://jungle3.greymass.com',
-                'https://jungle.eosn.io'
             ])
-        })
-        assert.equal(api.provider instanceof AxiosProvider, true)
-    })
-
-    test('chain get_account', async function () {
-        const api = new APIClient({
-            provider: new AxiosProvider('https://jungle3.greymass.com')
         })
         const account = await api.v1.chain.get_account('eosio')
         assert.equal(account.account_name, 'eosio')
     })
 
-    test('api error', async function () {
+    test('pool depleted returning error', async function () {
         try {
             const api = new APIClient({
-                provider: new AxiosProvider('https://jungle3.greymass.com')
+                provider: new AxiosProvider([
+                    'http://bogus1.greymass.com',
+                    'https://bogus2.greymass.com',
+                    'https://jungle3.greymass.com',
+                ])
             })
             await api.call({path: '/v1/chain/get_account', params: {account_name: '.'}})
             assert.fail()
@@ -56,4 +47,19 @@ suite('api', function () {
             ])
         }
     })
+
+    test('pool recycles on multiple requests', async function () {
+        const api = new APIClient({
+            provider: new AxiosProvider([
+                'http://bogus1.greymass.com',
+                'https://bogus2.greymass.com',
+                'https://jungle3.greymass.com',
+            ])
+        })
+        const test1 = await api.v1.chain.get_account('eosio')
+        assert.equal(test1.account_name, 'eosio')
+        const test2 = await api.v1.chain.get_account('eosio')
+        assert.equal(test2.account_name, 'eosio')
+    })
+
 })
