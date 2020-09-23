@@ -17,9 +17,6 @@ class MockInterceptor implements AxiosProviderInterceptor {
         this.provider = provider
     }
     onResponse(response: AxiosRequestConfig) {
-        // console.log(response)
-        response.data.foo = 'bar'
-        console.log(response.data)
         return response
     }
     onError(error: AxiosError) {
@@ -37,8 +34,9 @@ suite('interceptor - generic', function () {
         const urls = [
             'https://jungle3.greymass.com',
         ]
-        const provider = new AxiosProvider(urls)
-        provider.setInterceptor(new MockInterceptor(provider))
+        const provider = new AxiosProvider(urls, {
+            interceptor: MockInterceptor
+        })
         const api = new APIClient({ provider })
         const account = await api.v1.chain.get_account('eosio')
         // assert.equal(account.account_name, 'eosio')

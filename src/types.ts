@@ -2,7 +2,14 @@ import {AxiosError, AxiosInstance, AxiosRequestConfig} from 'axios'
 
 import AxiosProvider from './index'
 
-export interface AxiosProviderInterceptor {
+export class AxiosProviderInterceptor {
+    provider: AxiosProvider
+    onResponse: (response: AxiosRequestConfig) => void
+    onError: (error: AxiosError) => void
+}
+
+export interface AxiosProviderInterceptorConstructor {
+    new (provider: AxiosProvider): AxiosProviderInterceptor
     provider: AxiosProvider
     onResponse: (response: AxiosRequestConfig) => void
     onError: (error: AxiosError) => void
@@ -22,7 +29,7 @@ export interface AxiosProviderOptions {
     /**
      * Custom Interceptor to override behaviour on request/error
      */
-    interceptor?: AxiosProviderInterceptor
+    interceptor?: AxiosProviderInterceptorConstructor
 }
 
 export type UrlType = string | string[]
