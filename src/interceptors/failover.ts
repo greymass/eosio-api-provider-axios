@@ -4,7 +4,7 @@ import {AxiosProvider} from '../index'
 import {AxiosProviderInterceptor} from '../types'
 
 export default class AxiosProviderModeFailover implements AxiosProviderInterceptor {
-    private provider: AxiosProvider
+    provider: AxiosProvider
 
     constructor(provider) {
         this.provider = provider

@@ -1,7 +1,11 @@
 import {APIProvider} from '@greymass/eosio'
 import axios, {AxiosInstance} from 'axios'
 
-import {AxiosProviderOptions, UrlType} from './types'
+import {
+    AxiosProviderInterceptor,
+    AxiosProviderOptions,
+    UrlType
+} from './types'
 import AxiosProviderInterceptorFailover from './interceptors/failover'
 
 export class AxiosProvider implements APIProvider {
@@ -11,6 +15,7 @@ export class AxiosProvider implements APIProvider {
     public url: string
     public retries: number = 0
 
+    private interceptor?: AxiosProviderInterceptor
     private mode: string = 'failover'
     private pool: string[]
 
@@ -25,6 +30,17 @@ export class AxiosProvider implements APIProvider {
         this.pool = pool
         // Set the current URL as the first provided
         this.url = url
+        //
+        if (options.mode) {
+            this.mode = options.mode
+        }
+        //
+        if (options.interceptor) {
+            console.log("override interceptor", options)
+            this.mode = 'override'
+            this.interceptor = options.interceptor
+        }
+        // Initialize axios instance
         if (!options.axios) {
             this.axios = this.initialize()
         } else {
@@ -42,10 +58,18 @@ export class AxiosProvider implements APIProvider {
     initialize() {
         const instance = this.getInstance()
         let interceptor
+        if (this.interceptor) {
+            this.mode = "override"
+        }
         switch (this.mode) {
+            case "override": {
+                interceptor = this.interceptor
+                break;
+            }
             case "failover":
             default: {
                 interceptor = new AxiosProviderInterceptorFailover(this)
+                break;
             }
         }
         instance.interceptors.response.use(
@@ -59,6 +83,11 @@ export class AxiosProvider implements APIProvider {
         baseURL: this.url,
         timeout: 1000,
     })
+
+    setInterceptor = (interceptor) => {
+        this.interceptor = interceptor
+        this.initialize()
+    }
 
     getPool = () => this.pool
 
